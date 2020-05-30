@@ -1,0 +1,62 @@
+apply plugin: 'java'
+apply plugin: 'project-report'
+
+
+group 'info.garagesalesapp'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile project (':json-display')
+}
+
+task simpleShowDate {
+
+    group = "my tasks"
+    description = "Show current date"
+
+    doLast {
+        println "This is the first doLast"
+    }
+    doLast {
+        println ""
+        println "Current Date: " + new Date()
+        println ""
+    }
+    doFirst {
+        println "This always goes first!"
+    }
+}
+
+task printAwesomenessLevelAfterSuccessfulBuild {
+    dependsOn build
+    doFirst {
+        println "We are now done building the project! How awesome are you?"
+    }
+    doLast {
+        println "You are UBER awesome!"
+    }
+}
+
+//for extending tasks:
+//define a custom class declaration by extending to the DefaultTask class
+class ShowDate extends DefaultTask {
+    String dateMessage = "Date is: "
+
+    @TaskAction
+    void showDate() {
+        println dateMessage + new Date()
+    }
+}
+
+//instantiate a new task (object) of type ShowDate by leveraging the class defined earlier
+task showDate(type: ShowDate)
+
+//instantiate a new task (object) of type Showdate by leveraging the class defined earlier and pass in a closure to extend the functionality of the original class definition
+task customShowDate(type: ShowDate) {
+    dateMessage = "Custom time is: "
+}

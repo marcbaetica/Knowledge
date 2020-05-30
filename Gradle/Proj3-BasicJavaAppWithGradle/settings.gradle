@@ -1,0 +1,3 @@
+rootProject.name = 'Proj3-BasicJavaAppWithGradle'
+include 'json-display'
+

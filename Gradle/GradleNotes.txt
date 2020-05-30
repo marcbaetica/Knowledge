@@ -1,0 +1,401 @@
+Summary of terminal commands:
+
+USAGE: gradle [option...] [task...] -> it seems that the option(s) and task(s) can be reversed
+gradle --help # displays a list of options (such as --console outlined below) that can be passed for executing the process
+
+gradle build --warning-mode all # displays warnings of any during the gradle build execution
+gradle build --info
+gradle build --debug
+gradle -q build # builds project without any output in the terminal
+gradle --console=verbose build # builds the project but with a console setting of verbose (show everything including the tasks that were executed). The --console option was added sometime during Gradle version 4.0 (I think) and it specifies which type of console output to generate. The potential values are: 'plain', 'auto' (default), 'rich' or 'verbose'.
+
+
+
+gradle properties # shows a full list of the available properties of the Gradle's Project java object that can be programmatically adjusted as per project build requirements
+gradle tasks --all # displays a full list of pre-baked tasks available for calling through the build.gradle file as part of the build steps definition. They are grouped logically as per categories: Build tasks, Build Setup tasks, Documentation tasks, Help tasks and Verification tasks.
+gradle dependencies # view dependencies and their hierarchies (as per existing modules)
+gradle -q projects # q is for quiet mode as to not overpopulate terminal with information and projects returns us the list of projects and their respective structure
+
+gradle wrapper --gradle-version 3.5 # generates the gradle wrapper and defines the version that is to be used for building your project accross multiple machines
+
+
+
+
+
+
+TODOs:
+
+1) should spend some more time reading through the various tasks that are defined in the official docs (and map out their dependency structure + do some test runs to confirm these theories) as well as the overall Gradle Java plugin, both included in this url: https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_tasks
+2) Work through making tutorials for:
+- Creating a Gradle plugin and publishing it to the external repo
+- Gradle Profiling
+- Gradle Cloud
+3) Finish directory folder structure (Section 8 below)
+4) Make an intro - Add this as Section 1.
+
+
+
+
+
+
+
+
+
+
+
+2 - Java Plugin for Gradle:
+
+What does the Java plugin do?
+Gradle is the core but the java plugin will allow it to understand how to build the java application by defining a set of tasks to use for java builds.
+One of Gradle's powers is that through the use of other plugins it is extensible to other kinds of applications (not just java specific) that can leverage it as part of their own build system.
+
+How to declare the plugin:
+apply plugin: 'java' //at the top of the build.gradle file. to test that this was successfully added simply run gradle build in your terminal
+
+
+Some of the tasks that are added by the java plugin:
+- Clean = cleans up the java bytecode that Gradle writes out
+- Compile = compiles the java code
+- Assemble = takes the byte code and assemble it into a jar file
+- Test = run our unit tests
+- etc. = many others of course
+
+Declaring dependencies and repositories:
+- add to the dependencies section and associate to which task the particular dependency is relevant (compiling, testing, etc.)
+- dependency string is in the format 'organizationName:artefactName:version'
+- tell Gradle which repository to leverage for pulling the declared dependencies. For calling the maven central repo, the syntax is similar to how Maven declares it
+
+dependencies {
+	compile 'com.google.code.gson:gson:2.8.0'
+}
+
+repositories {
+	mavenCentral()
+}
+
+
+
+
+3 - Add Gradle to Java Program:
+
+The build.gradle script contains all the definitions and code that Gradle needs for executing tasks. Steps are as follows:
+- define the java pugin
+- add source code declarations for gradle to find these classes
+- declare the external dependencies and their respective repositories
+
+apply plugin: 'java'
+
+sourceSets {
+    main {
+        java.srcDirs = ['src']
+    }
+}
+dependencies {
+    compile 'com.google.code.gson:gson:2.8.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+Running 'gradle build' generates a new folder called 'build'. Inside it, under the 'classes' folder we can find the compiled java code, while under the libs folder we can locate the respective packaged jar file.
+
+External dependencies should be downloaded under the External Libraries section. If they do not show up there then they are either automatically cashed as already downloaded under the .gradle/cached/ or there is an error. In that case (if some libraries cannot be imported into the codebase) go to View -> Tool Windows -> Gradle and manually click the Reimport all Gradle Projects button. This will force a re-synchronization.
+
+
+
+
+
+
+
+4 - Using Groovy
+
+To run groovy in the gradle console go to: Tools -> Groovy console
+
+System.out.printline("Hello World!"); //can run in java and groovy
+printline "Hello World!" //in groovy System.out is added automatically, ; is no longer required and functions with only one parameter do not require brackets
+
+The command is still compiled down to java bytecode and run in the JVM (which is why it is sometimes refered to as a JVM language) so it's very easy to inter-operate it with Java.
+
+
+//Groovy scripting from this point on - Closures are a very important part of Groovy scripting
+class MyClass {
+	void doSomething(Closure closure) {
+		closure.call()
+	}
+}
+
+myObject = new MyClass()
+
+//the closure essentially allows us to not what to decide what code runs at the time when we define the class but rather we can decide that at the time we run the method 
+myObject.doSomething {
+	println new Date()
+}
+
+
+
+
+5 - Gradle Project Object Model
+
+What is an object model?
+When we run the gradle build command, Gradle instantiates the Project Object Model. It essentially represents the "things" in our application (not the domain objects like saleEvent in our case but the actual objects that we are building as part of our build). After it is instantiated, Gradle uses it to build the project. An advantage of it is that it is modifiable as per our requirements.
+
+The Project object is one of the most important objects in the Project Object Model. It has a 1 to 1 relationship with build.gradle. Therefore for every build.gradle there is a Project java object that gets created.
+
+The Task object is the second most important object in the Project Object Model. The project is a collection of Tasks (compile, createJarFile, etc.). A task itself is a collection of smaller actions. Since we only work at the task level, we don't ever see the individual actions. The actions are the actual functions performed by Gradle and usually there is only a single action per task.
+
+To view the tasks run:
+gradle properties 
+This displays a full view of all of these atributes -> an example would be buildDir which defines the build location where the artifacts are created. All of these can be redefined by simply adding the new value to the attribute directly in the build.gradle file as such:
+project.buildDir = "myBuildDir"
+
+For a full list of attributes and how to have programatic access to their values follow this link: https://docs.gradle.org/current/dsl/org.gradle.api.Project.html
+The list not only contains the defined attributes but also the methods that one can call on the Project object (since, as mentioned before, the Project object is an actual Java object).
+
+The project object has a series of attributes. Some examples are sourceCompatibility, repositories or dependencies. In the build.gradle file referencing these attributes to be defined or modified can be done in either way:
+sourceCompatibility OR project.sourceCompatibility
+repositories OR project.repositories
+dependencies OR project.dependencies
+
+In order to see a full list of pre-baked tasks available for calling through the build.gradle file as part of the build steps definition simply run in the terminal:
+gradle tasks
+The list of available tasks are grouped logically as per categories or relevance: Build tasks, Build Setup tasks, Documentation tasks, Help tasks and Verification tasks. NOTE: this does not limit us from also creating our own tasks and automatically adding them to the build process. This shown in sections 12 and 13 below.
+
+
+
+6 - Add Dependencies
+
+gradle dependencies #shows all dependencies (grouped per configurations) for the current project as defined in build.gradle file
+gralde dependencies --configuration testCompile #narrows out the dependencies down to the particular configuration
+
+As seen when narrowing down to the testCompile configuration, both the compile and testCompile dependencies show. This is because compile is a subset of testCompile. Narrowing down to compile alone will yield only the compile dependencies.
+
+For transitive dependencies (such as hamcrest-core when importing junit) we simply do not care. They get printed but at the end of the day there is the following truth: they are needed anyway as otherwise leveraging parent dependency would not work and at the same time the importing process is handled automatically in the background.
+
+If there is library version conflict between a transient library and a main library that have to be imported (see this through gradle dependencies), gradle will automatically resolve that conflict by updating the lower version to the newer one before pulling it into your project.
+
+To generate an html report of the gradle file simply do two things: add a new plugin using the apply plugin directive and run in your terminal gradle htmlDependencyReport
+apply plugin: 'project-report'
+gradle htmlDependencyReport
+This results in the index.html report being generated somewhere in the build folder. Intelij allows us to open directly in a browser of choice using Right click -> Open in Borwser -> Firefox (or other). This also hosts the report on the local intelij web server.
+
+
+7 - Defining new library module inside your project (also known as a SUBPROJECT as observed by its structure)
+
+Define a new module
+
+Code the module
+
+Assign the dependency for the module
+
+Extract the JSON display code from our current code into a separate module -> this would make this JSON display library reusable in other java display projects. This is one of the main use cases in Gradle: making small library projects that are reusable.
+
+
+To add a new library module with gradle integration would imply creating a second gradle project definition. Though this will entail having another set of build.gradle, settings.gradl, etc. files in the same project, they will not be at the same level of the directory structure. The main one will reside at the root folder level while the library module and its own entire gradle definition will reside its own folder (see json-display folder in project 3). The reason for this separation is because json-display (in this example) is its own java project and there is no real difference between it and the root one.
+
+To add a new module simply go to new -> module, select gradle module, select the project of choice and define the module & artefact name (aka they are similar). The module folder itself will also have the same name.
+
+After the addition of the new module, settings.json will also include (besides the rootProject.name) this new module's name as part of the project hierarchy. The inclusion will be done using the 'include' name:
+rootProject.name = 'Proj3-BasicJavaAppWithGradle'
+include 'json-display'
+
+After adding the desired class with its methods for our library and moved our required dependencies to the appropriate buld.gradle file, we can re-build the project (make sure the newly imported libraries are added to the classpath) and leverage this newly created artefact in our main code. In order to start using this library in our code we need to add in the root build.gradle the dependency to the module as follows:
+dependencies {
+	compile project (':json-display') //json-display = artefact/module/moduleFolder name. Also note the funny : at the beginning. This tells gradle that this is a module.
+}
+
+To see the library hierarchy use 'gradle dependencies' in the terminal:
+testRuntimeClasspath - Runtime classpath of source set 'test'.
++--- project :json-display
+|    \--- com.google.code.gson:gson:2.8.0
+\--- junit:junit:4.12
+     \--- org.hamcrest:hamcrest-core:1.3
+
+As we can see, the dependencies are structured as expected starting at the root level: module libs -> its own libraries.
+
+
+
+8 - Gradle build folder structure
+
+The following order is a reasonable approach to reading a project:
+settings.gradle = tells us the root project as well as what other subprojects are included
+build.gradle = saves state and output of intermediate tasks that are being executed. More details on its breakdown in section 9 below
+...
+
+
+9 - Build directory
+
+Saves state and output of intermediate tasks that are being executed. Subdirectories are as follows:
+- classes = compiled bytecode gets saved here.
+- libs = where the output goes -> the artefacts go here (jar, war, etc.). Name is defined using the artefact name bla-bla-1.0-SNAPSHOT.jar.
+- reports = location for storing generated reports if using plugins that generate reports (such as project-report). Copying over its content from time to time is a good idea as this directory might be overridden upon rebuild.
+- tmp = this is just by gradle through its build process.
+
+To erase the build directories of ALL projects (both root one as well as subprojects) run:
+gradle -q clean
+
+To build under a file name other than 'build' simply define the buildDir attribute with the desired string in build.gradle:
+buildDir = "myBuild" //also be sure to rebuild the project for the folder to appear using
+
+
+10 - Gradle Wrapper
+
+The gradlew and gradlew.bat executables get generated inside of the project root directory as part of the project build process (more specifically the init step). Their purpose is to ensure that multiple developers working on the same project can leverage their computer's internal gradle binary without having to worry about compatibility between versions of the executable. If the correct version of Gradle is not installed, it will update it automatically for the user (using the projectName/gradle/wrapper/gradle-wrapper.jar java app and comparing to the required version outlined on the last line of the projectName/gradle/wrapper/gradle-wrapper.properties file). After that, it will pass whichever command is being called to the real Gradle executable. To use them simply replace the 'gradle' keyword in a terminal command with either './gradlew' or 'gradle.bat' depending on which operating system is being used. NOTE: the lack of './' at the beginning for linux based terminals (reflecting calling the execution of the script) will throw an error.
+
+
+If the gradlew and gradlew.bat files together with the gradle folder do not exists (if the project is old and it did not have these wrappers) simply run the following command in the terminal to generate them again:
+gradle wrapper --gradle-version 3.5 # or whichever version you want defined for building your project
+
+IMPORTANT NOTE: as the wrapper ensures the build process occurs correctly by using the appropriate gradle binary version, either in the case that developers work on the same project or a Continous Integration pipeline when rebuilding the project multiple times is a necessity during its development lifecycle, it is generally a good practice to:
+1) commit these resources into your version control system
+2) use them if they exist in your project
+
+
+11 - Tasks
+
+A task is essentially a function that we programmatically request Gradle to execute. Each task takes an input and outputs specific data. The output of a task might be fed into the next task. In other words, tasks are inter-related. Because of this it is safe to assume that triggering a specific task might cause a triggering of another or multiple tasks before executing the desired task.
+
+gradle build -> this is the build task. It compiles our code and produces our artefacts. The output of gradle build reflects a series of tasks that have been run because of running the build:
+
+gradle --console=verbose build
+> Task :json-display:compileJava UP-TO-DATE
+> Task :json-display:processResources NO-SOURCE
+> Task :json-display:classes UP-TO-DATE
+> Task :json-display:jar UP-TO-DATE
+> Task :compileJava UP-TO-DATE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :assemble UP-TO-DATE
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses UP-TO-DATE
+> Task :test NO-SOURCE
+> Task :check UP-TO-DATE
+> Task :build UP-TO-DATE
+> Task :json-display:assemble UP-TO-DATE
+> Task :json-display:compileTestJava NO-SOURCE
+> Task :json-display:processTestResources NO-SOURCE
+> Task :json-display:testClasses UP-TO-DATE
+> Task :json-display:test NO-SOURCE
+> Task :json-display:check UP-TO-DATE
+> Task :json-display:build UP-TO-DATE
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 7.0.
+Use '--warning-mode all' to show the individual deprecation warnings.
+See https://docs.gradle.org/6.4.1/userguide/command_line_interface.html#sec:command_line_warnings
+
+BUILD SUCCESSFUL in 1s
+4 actionable tasks: 4 up-to-date
+
+The order of tasks seen in the output above reflects the order in which the tasks were run from the first (top) all the way to the last task (bottom).
+
+NOTE about speed of execution: As mentioned before, during the first run all tasks are executed in order. In consecutive runs, if a task's definition or order in the build.gradle file did not change AND if the input it receives is the same, it will not execute and instead simply give the same output as before. This greatly decreases the build time for projects.
+
+
+How to find a list of pre-baked Gradle tasks that are available for running out of the box?
+1) simply run in your terminal:
+gradle tasks # output will be the tasks logically grouped by task type
+2) Check the Gradle Java Plugin from their offical documentation (ALSO shows what task each task depends on):
+https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_tasks
+
+
+
+11 - The Gradle view tool (InteliJ)
+
+It's an alternative way for running Gradle tasks. It also has its own GUI, which seems to make it useful when learning the ropes of Gradle.
+
+To open it, click on the Gradle icon on the far right side of the screen. Some of the most important features include buttons which allow us to:
+- Reimport All Gradle Projects => MANUALLY TRIGGERING THIS SOMETIMES HAS BEEN THE MOTHER OF ALL IMPORT PROBLEMS SOLUTION
+- View a list of all the Gradle projects defined in the selected Java project
+- View all of the defined tasks and dependencies
+- Run a task by double clicking it
+- View a list of Run Configurations for each Gradle project
+- Open the Gradle Settings window
+- Toggle offline mode (for testing scenarios in which the internet connection is unavailable)
+- etc.
+
+
+12 - Creating custom Gradle tasks
+
+Creating a custom Gradle task -> say one in which the only action (also an object) is to shows us the date.
+
+task showDate {
+	doLast  {
+		println 'Current Date: ' + new Date()
+	}
+}
+
+The doLast method adds the given closure to the end of this task's action list. The closure is passed this particular task as a parameter when executed. Passing a closure in the doLast method. A closure is a piece of code that is to be run at a certain point.
+
+Also we can configure what logical grouping the task should go under by passing that as a parameter (type object):
+task myTask //regular definition
+task myTask { configure closure } //regular definition
+task myTask(type: SomeType) //specifying the type of task
+task myTask(type: SomeType) { configure closure } //specifying the type of task
+
+Since build.gradle is a Groovy script, we can also leverage the programable aspect to call the doFirst and doLast methods on the task that was defined as follows:
+
+task myTask
+
+myTask.doFirst( {
+    println "This is done first"
+} );
+
+myTask.doLast { //NOTE: A TASK CAN EXECUTE MULTIPLE DOFIRSTS/DOLASTS, EACH WITH THEIR OWN CLOSURE. THE ORDER EXECUTION IS EXTABLISHED MAINLY AS PER FIRST BEFORE LAST HIERARCHY AND SECONDLY IN THE ORDER THAT THEY ARE DEFINED (as per the println messages outlined)
+    println "This is done before the last"
+}
+
+myTask.doLast( {
+    println "This is done last"
+} );
+
+The closure is contained within the { and } characters. Everything inside the curly brackets ({ and }) is interpreted as a separate function. When the task myTask is executed, Gradle will first execute all closures passed as parameters the doFirst() method, and then all closures passed as parameters the doLast() method. 
+
+Can also make the task running to depend on another task by defining the 'dependsOn taskName' property of the task object as follows:
+
+task showDate {
+	dependsOn build
+	doLast {
+		println "This task executed only after the build task succeeded."
+	}
+}
+
+gradle --console=verbose showDate # to run the task in the terminal
+
+In the example above, triggering the run of the showDate task through the terminal will firstly commence the build task (and its own dependent tasks) and only after that one succeeded will its own action execute.
+
+Customly defined tasks with no type definition will show up under the Other tasks logical group (both in Gradle view as well as in the terminal by running gradle tasks --all). As outlined above, you can define the task as part of a group by passing in the appropriate value for the type group as follows:
+
+task showDate {
+	group = "my utilities" //will automatically capitalize the first letter resulting in tasks group with name: "My utilities tasks"
+	description = "Show current date"
+	doLast {
+		println "This is the date: " + new Date()
+	}
+}
+
+
+13 - Extending existing tasks (through non-dsl type of groovy scripting in the build.gradle file)
+
+//define a custom class declaration by extending to the DefaultTask class
+class ShowDate extends DefaultTask {
+	String dateMessage = "Date is: "
+
+	@TaskAction
+	void showDate() {
+		println dateMessage + new Date()
+	}
+}
+
+//instantiate a new task (object) of type ShowDate by leveraging the class defined earlier 
+task showDate(type: ShowDate)
+
+//instantiate a new task (object) of type Showdate by leveraging the class defined earlier and passing in a closure to extend the functionality of the original class definition
+task customShowDate(type: ShowDate) {
+	dateMessage = "Custom time is: "
+}
+
+
+
+
